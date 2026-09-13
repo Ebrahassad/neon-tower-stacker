@@ -23,13 +23,9 @@ class TowerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     canvas.save();
-    
-    // خلفية الشبكة أو الفضاء
     _drawBackgroundEffects(canvas, size);
-
     canvas.translate(0, cameraOffsetY);
 
-    // رسم الطوابق الثابتة
     for (int i = 0; i < stackedBlocks.length; i++) {
       var block = stackedBlocks[i];
       double currentWind = (world.type == WorldType.stormDefense) ? windOffset * (i / 5.0) : 0.0;
@@ -40,21 +36,17 @@ class TowerPainter extends CustomPainter {
       canvas.restore();
     }
 
-    // رسم الطابق المتحرك الحاضر
     _drawBlock(canvas, currentBlock, isCurrent: true);
-
     canvas.restore();
   }
 
   void _drawBackgroundEffects(Canvas canvas, Size size) {
     if (world.type == WorldType.beatStacker) {
-      // شريط الإيقاع
       final pulsePaint = Paint()
         ..color = world.accentColor.withOpacity(0.15 * beatScale)
         ..style = PaintingStyle.fill;
       canvas.drawCircle(Offset(size.width / 2, size.height / 2), 120 * beatScale, pulsePaint);
     } else if (world.type == WorldType.stormDefense) {
-      // خطوط العاصفة
       final windLine = Paint()
         ..color = Colors.white10
         ..strokeWidth = 1.5;
@@ -76,7 +68,6 @@ class TowerPainter extends CustomPainter {
 
     final rect = Rect.fromLTWH(block.x, block.y, block.width, block.height);
 
-    // توهج نيون متألق
     final paintGlow = Paint()
       ..color = block.color.withOpacity(0.6)
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, isCurrent ? 14 : 8);
@@ -94,7 +85,6 @@ class TowerPainter extends CustomPainter {
     canvas.drawRect(rect, paintBlock);
     canvas.drawRect(rect, borderPaint);
 
-    // إضافات خاصة بعالم الجزر البيئية (Eco Biomes)
     if (block.type == BlockType.ecoForest) {
       final leafPaint = Paint()..color = Colors.greenAccent;
       canvas.drawCircle(Offset(block.x + 10, block.y), 6, leafPaint);

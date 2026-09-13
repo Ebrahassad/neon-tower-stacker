@@ -30,7 +30,6 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   bool isGameOver = false;
   double cameraOffsetY = 0.0;
 
-  // متعديلات الفيزياء الخاصة بالعوالم
   double windOffset = 0.0;
   double timeAcc = 0.0;
   double beatScale = 1.0;
@@ -97,12 +96,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       double screenWidth = MediaQuery.of(context).size.width;
       if (screenWidth == 0) screenWidth = 360.0;
 
-      // عالم العواصف (Storm Defense)
       if (widget.world.type == WorldType.stormDefense) {
         windOffset = sin(timeAcc) * 25.0;
       }
 
-      // العالم الإيقاعي (Beat Stacker)
       if (widget.world.type == WorldType.beatStacker) {
         beatScale = 1.0 + sin(timeAcc * 3) * 0.25;
       }
@@ -123,19 +120,16 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       return;
     }
 
-    // إصدار صوت نقرة لمسية عند الإسقاط
     SystemSound.play(SystemSoundType.click);
 
     Block lastBlock = stackedBlocks.last;
     double diff = currentBlock.x - lastBlock.x;
 
-    // عالم الخامات النيون: المغناطيس
     if (currentBlock.type == BlockType.magnetic && diff.abs() < 35) {
       currentBlock.x = lastBlock.x;
       diff = 0;
     }
 
-    // مكافأة الإيقاع في العالم الإيقاعي
     bool perfectBeat = false;
     if (widget.world.type == WorldType.beatStacker && (beatScale > 1.2)) {
       perfectBeat = true;
@@ -153,7 +147,6 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
     double newWidth = currentBlock.width - diff.abs();
 
-    // عالم الجزر البيئية (Eco Biomes): توافق الكتل يزيد المساحة
     if (widget.world.type == WorldType.ecoBiomes && lastBlock.type == currentBlock.type) {
       newWidth = min(initialWidth, newWidth + 25);
     }
@@ -167,7 +160,6 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
     double newX = diff > 0 ? currentBlock.x : lastBlock.x;
 
-    // عالم انعدام الجاذبية: ميلان البرج
     double rotation = 0.0;
     if (widget.world.type == WorldType.zeroGravity) {
       rotation = (Random().nextDouble() - 0.5) * 0.15;

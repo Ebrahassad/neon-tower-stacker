@@ -38,8 +38,6 @@ class MainMenuScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 60),
-                
-                // زر البدء السريع
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.cyanAccent,
@@ -58,8 +56,6 @@ class MainMenuScreen extends StatelessWidget {
                   child: const Text('لعب سريع', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(height: 16),
-
-                // زر اختيار العوالم والمراحل
                 OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.purpleAccent,

@@ -24,8 +24,12 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android Project Files
-        run: flutter create . --platforms=android --overwrite
+      - name: Generate Android Project Files (Protected)
+        run: |
+          cp -r lib lib_backup
+          flutter create . --platforms=android --overwrite
+          rm -rf lib
+          mv lib_backup lib
 
       - name: Install Dependencies
         run: flutter pub get
