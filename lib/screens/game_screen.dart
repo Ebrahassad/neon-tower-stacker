@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/block.dart';
+import '../models/world.dart';
 import '../painters/tower_painter.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({Key? key}) : super(key: key);
+  final WorldModel world;
+  const GameScreen({Key? key, required this.world}) : super(key: key);
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -26,6 +29,11 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   int combo = 0;
   bool isGameOver = false;
   double cameraOffsetY = 0.0;
+
+  // متعديلات الفيزياء الخاصة بالعوالم
+  double windOffset = 0.0;
+  double timeAcc = 0.0;
+  double beatScale = 1.0;
 
   @override
   void initState() {
@@ -55,7 +63,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         y: baseY,
         width: initialWidth,
         height: blockHeight,
-        color: Colors.purpleAccent,
+        color: widget.world.primaryColor,
       ));
 
       _spawnNextBlock(baseY - blockHeight, initialWidth);
@@ -66,19 +74,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     final types = BlockType.values;
     final randomType = types[Random().nextInt(types.length)];
 
-    Color color;
-    switch (randomType) {
-      case BlockType.neon:
-        color = Colors.cyanAccent;
-        break;
-      case BlockType.magnetic:
-        color = Colors.deepPurpleAccent;
-        break;
-      case BlockType.elastic:
-        color = Colors.amberAccent;
-        break;
-      default:
-        color = Colors.pinkAccent;
+    Color color = widget.world.accentColor;
+    if (widget.world.type == WorldType.ecoBiomes) {
+      color = randomType == BlockType.ecoWater ? Colors.lightBlueAccent : Colors.lightGreenAccent;
     }
 
     currentBlock = Block(
@@ -95,8 +93,19 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     if (isGameOver) return;
 
     setState(() {
+      timeAcc += 0.05;
       double screenWidth = MediaQuery.of(context).size.width;
       if (screenWidth == 0) screenWidth = 360.0;
+
+      // عالم العواصف (Storm Defense)
+      if (widget.world.type == WorldType.stormDefense) {
+        windOffset = sin(timeAcc) * 25.0;
+      }
+
+      // العالم الإيقاعي (Beat Stacker)
+      if (widget.world.type == WorldType.beatStacker) {
+        beatScale = 1.0 + sin(timeAcc * 3) * 0.25;
+      }
 
       currentBlock.x += speed * direction;
 
@@ -114,25 +123,40 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       return;
     }
 
+    // إصدار صوت نقرة لمسية عند الإسقاط
+    SystemSound.play(SystemSoundType.click);
+
     Block lastBlock = stackedBlocks.last;
     double diff = currentBlock.x - lastBlock.x;
 
+    // عالم الخامات النيون: المغناطيس
     if (currentBlock.type == BlockType.magnetic && diff.abs() < 35) {
       currentBlock.x = lastBlock.x;
       diff = 0;
     }
 
-    if (diff.abs() < 7.0) {
+    // مكافأة الإيقاع في العالم الإيقاعي
+    bool perfectBeat = false;
+    if (widget.world.type == WorldType.beatStacker && (beatScale > 1.2)) {
+      perfectBeat = true;
+    }
+
+    if (diff.abs() < 8.0) {
       currentBlock.x = lastBlock.x;
       diff = 0;
       combo++;
-      score += 15 * combo;
+      score += (15 * combo) * (perfectBeat ? 2 : 1);
     } else {
       combo = 0;
       score += 5;
     }
 
     double newWidth = currentBlock.width - diff.abs();
+
+    // عالم الجزر البيئية (Eco Biomes): توافق الكتل يزيد المساحة
+    if (widget.world.type == WorldType.ecoBiomes && lastBlock.type == currentBlock.type) {
+      newWidth = min(initialWidth, newWidth + 25);
+    }
 
     if (newWidth <= 0) {
       setState(() {
@@ -143,8 +167,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
     double newX = diff > 0 ? currentBlock.x : lastBlock.x;
 
-    if (currentBlock.type == BlockType.elastic) {
-      newWidth = min(initialWidth, newWidth + 20);
+    // عالم انعدام الجاذبية: ميلان البرج
+    double rotation = 0.0;
+    if (widget.world.type == WorldType.zeroGravity) {
+      rotation = (Random().nextDouble() - 0.5) * 0.15;
     }
 
     Block placedBlock = Block(
@@ -154,6 +180,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       height: blockHeight,
       color: currentBlock.color,
       type: currentBlock.type,
+      rotation: rotation,
     );
 
     stackedBlocks.add(placedBlock);
@@ -162,7 +189,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       cameraOffsetY += blockHeight;
     }
 
-    speed += 0.2;
+    speed += 0.25;
     _spawnNextBlock(placedBlock.y - blockHeight, newWidth);
   }
 
@@ -186,6 +213,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 stackedBlocks: stackedBlocks,
                 currentBlock: currentBlock,
                 cameraOffsetY: cameraOffsetY,
+                world: widget.world,
+                windOffset: windOffset,
+                beatScale: beatScale,
               ),
             ),
             SafeArea(
@@ -194,14 +224,23 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'SCORE: $score',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'SCORE: $score',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          widget.world.title,
+                          style: TextStyle(color: widget.world.accentColor, fontSize: 13),
+                        ),
+                      ],
                     ),
                     if (combo > 1)
                       Text(
@@ -223,28 +262,22 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                   decoration: BoxDecoration(
                     color: const Color(0xFF140D2B),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.pinkAccent, width: 2),
+                    border: Border.all(color: widget.world.primaryColor, width: 2),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
                         'GAME OVER',
-                        style: TextStyle(
-                          color: Colors.pinkAccent,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(color: Colors.pinkAccent, fontSize: 28, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 12),
-                      Text(
-                        'Final Score: $score',
-                        style: const TextStyle(color: Colors.white, fontSize: 18),
-                      ),
+                      Text('Final Score: $score', style: const TextStyle(color: Colors.white, fontSize: 18)),
                       const SizedBox(height: 20),
-                      const Text(
-                        'Tap Anywhere to Restart',
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: widget.world.primaryColor),
+                        onPressed: _resetGame,
+                        child: const Text('إعادة اللعب'),
                       ),
                     ],
                   ),

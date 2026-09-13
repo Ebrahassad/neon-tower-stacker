@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/game_screen.dart';
+import 'screens/main_menu_screen.dart';
 
 void main() {
   runApp(const NeonTowerApp());
@@ -14,7 +14,7 @@ class NeonTowerApp extends StatelessWidget {
       title: 'Neon Tower Stacker',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(),
-      home: const GameScreen(),
+      home: const MainMenuScreen(),
     );
   }
 }
