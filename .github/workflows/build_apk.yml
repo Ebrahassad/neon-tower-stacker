@@ -24,21 +24,22 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Generate Android Project Files (Protected)
+      - name: Generate Android Project Files Safely
         run: |
-          cp -r lib lib_backup
+          mkdir -p /tmp/game_lib
+          cp -r lib/* /tmp/game_lib/
           flutter create . --platforms=android --overwrite
-          rm -rf lib
-          mv lib_backup lib
+          cp -r /tmp/game_lib/* lib/
+          rm -rf /tmp/game_lib
 
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build APK
-        run: flutter build apk --debug
+      - name: Build Optimized Release APK
+        run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: neon-tower-stacker-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
